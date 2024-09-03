@@ -27,7 +27,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var speechResultText: TextView
     private lateinit var analysisResultText: TextView
 
-    private val apiKey = "AIzaSyDsplNEyCGYg7z_1EP564BLthDccRrzY8U"
+    private val apiKey = "api_key"
     private val model = GenerativeModel(
         modelName = "gemini-pro",
         apiKey = apiKey,
