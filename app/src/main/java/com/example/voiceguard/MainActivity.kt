@@ -10,6 +10,7 @@ import android.speech.SpeechRecognizer
 import android.widget.Button
 import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -25,7 +26,6 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var recordButton: Button
     private lateinit var speechResultText: TextView
-    private lateinit var analysisResultText: TextView
 
     private val apiKey = "AIzaSyDsplNEyCGYg7z_1EP564BLthDccRrzY8U"
     private val model = GenerativeModel(
@@ -41,6 +41,7 @@ class MainActivity : AppCompatActivity() {
 
     private val scope = CoroutineScope(Dispatchers.Main + Job())
     private var analysisJob: Job? = null
+    private var alertDialog: AlertDialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,7 +56,6 @@ class MainActivity : AppCompatActivity() {
 
         recordButton = findViewById(R.id.recordButton)
         speechResultText = findViewById(R.id.speechResultText)
-        analysisResultText = findViewById(R.id.analysisResultText)
 
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
 
@@ -78,7 +78,6 @@ class MainActivity : AppCompatActivity() {
         } else {
             isListening = true
             speechResultText.text = "" // 녹음 시작 시 결과 초기화
-            analysisResultText.text = "" // 분석 결과 초기화
             recordButton.text = "중지"
             val recognizerIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
@@ -98,6 +97,7 @@ class MainActivity : AppCompatActivity() {
         recordButton.text = "시작"
         speechRecognizer.stopListening()
         analysisJob?.cancel() // 실시간 분석 중지
+        alertDialog?.dismiss() // 열려있는 AlertDialog 닫기
     }
 
     private fun createRecognitionListener(): RecognitionListener {
@@ -148,11 +148,29 @@ class MainActivity : AppCompatActivity() {
                 if (currentText.isNotEmpty()) {
                     val analysis = analyzeText(currentText)
                     withContext(Dispatchers.Main) {
-                        analysisResultText.text = analysis
+                        showAnalysisResult(analysis)
                     }
                 }
             }
         }
+    }
+
+    private fun showAnalysisResult(analysis: String) {
+        alertDialog?.dismiss() // 이전 AlertDialog가 있다면 닫기
+
+        alertDialog = AlertDialog.Builder(this)
+            .setTitle("보이스피싱 분석 결과")
+            .setMessage(analysis)
+            .setPositiveButton("확인") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .setNegativeButton("통화 끊기") { _, _ ->
+                stopListening()
+            }
+            .setCancelable(false)
+            .create()
+
+        alertDialog?.show()
     }
 
     private suspend fun analyzeText(text: String): String {
@@ -201,5 +219,6 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         speechRecognizer.destroy()
         scope.cancel()
+        alertDialog?.dismiss()
     }
 }
